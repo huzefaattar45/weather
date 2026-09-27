@@ -10,3 +10,4 @@ from backend.models.notification import Notification
 from backend.models.audit_log import AuditLog
 from backend.models.room import Room
 from backend.models.competitor import Competitor
+from backend.models.booking import Booking

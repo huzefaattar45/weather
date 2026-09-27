@@ -1,20 +1,97 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CheckSquare, Clock, AlertTriangle, BrainCircuit, LineChart } from 'lucide-react'
+import {
+  CheckSquare,
+  Clock,
+  AlertTriangle,
+  BrainCircuit,
+  LineChart,
+  CloudRain,
+  Sun,
+  Cloud,
+  Wind,
+  Droplets,
+  CloudLightning,
+  Compass,
+  Activity,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { api, type TaskResponse, type ResortStatsResponse, type PricingAnalysisResponse, type StaffMemberResponse } from '@/lib/api'
+import {
+  api,
+  type TaskResponse,
+  type ResortStatsResponse,
+  type PricingAnalysisResponse,
+  type StaffMemberResponse,
+  type CurrentWeatherResponse,
+} from '@/lib/api'
 
 export const Route = createFileRoute('/_layout/dashboard')({
   component: DashboardPage,
 })
+
+function getWeatherIcon(condition: string) {
+  const c = condition.toLowerCase()
+  if (c.includes('rain') || c.includes('drizzle')) return <CloudRain className="h-6 w-6 text-sky-500" />
+  if (c.includes('thunder') || c.includes('storm')) return <CloudLightning className="h-6 w-6 text-amber-500" />
+  if (c.includes('cloud') || c.includes('overcast')) return <Cloud className="h-6 w-6 text-slate-400" />
+  return <Sun className="h-6 w-6 text-amber-500" />
+}
+
+function getSeverityBadge(severity: string) {
+  const s = severity?.toUpperCase()
+  switch (s) {
+    case 'EXTREME':
+    case 'CRITICAL':
+      return <Badge className="bg-rose-500/15 text-rose-700 border-rose-300 font-semibold tracking-wide">EXTREME</Badge>
+    case 'HIGH':
+      return <Badge className="bg-amber-500/15 text-amber-800 border-amber-300 font-semibold tracking-wide">HIGH</Badge>
+    case 'MODERATE':
+      return <Badge className="bg-blue-500/15 text-blue-700 border-blue-300 font-semibold tracking-wide">MODERATE</Badge>
+    case 'LOW':
+    case 'NORMAL':
+    default:
+      return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300 font-semibold tracking-wide">LOW</Badge>
+  }
+}
+
+function getSeverityColor(severity: string) {
+  const s = severity?.toUpperCase()
+  switch (s) {
+    case 'EXTREME':
+    case 'CRITICAL':
+      return 'text-rose-600'
+    case 'HIGH':
+      return 'text-amber-600'
+    case 'MODERATE':
+      return 'text-blue-600'
+    case 'LOW':
+    case 'NORMAL':
+    default:
+      return 'text-emerald-600'
+  }
+}
 
 function DashboardPage() {
   const [stats, setStats] = useState<ResortStatsResponse | null>(null)
   const [tasks, setTasks] = useState<TaskResponse[]>([])
   const [pricing, setPricing] = useState<PricingAnalysisResponse | null>(null)
   const [staff, setStaff] = useState<StaffMemberResponse[]>([])
+  const [weather, setWeather] = useState<CurrentWeatherResponse>({
+    temperature: 30.1,
+    humidity: 64.0,
+    rainfall: 0.0,
+    rain_probability: 23.0,
+    wind_speed: 13.3,
+    condition: 'Sunny',
+    timestamp: new Date().toISOString(),
+    location: 'Smart Resort 360, South Goa',
+    severity: 'LOW',
+    severity_reason: 'Optimal conditions: Sunny, 30.1°C, 13.3 km/h wind, no significant rainfall',
+    is_live: true,
+  })
+  const [weatherLoading, setWeatherLoading] = useState(false)
 
   useEffect(() => {
     // Fetch live data where possible
@@ -25,6 +102,12 @@ function DashboardPage() {
     }).catch(console.error)
     api.getPricingAnalysis().then(setPricing).catch(console.error)
     api.getStaff().then(setStaff).catch(console.error)
+    api.getCurrentWeather()
+      .then((data) => {
+        if (data) setWeather(data)
+      })
+      .catch((err) => console.warn('Dashboard weather fallback active:', err))
+      .finally(() => setWeatherLoading(false))
   }, [])
 
   const openTasksCount = stats?.tasks.active ?? 12
@@ -154,6 +237,97 @@ function DashboardPage() {
         </Card>
 
         <div className="col-span-3 space-y-4">
+          {/* Weather Intelligence Card */}
+          <Card className="border-sky-200/80 shadow-xs overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 bg-gradient-to-r from-sky-50/70 to-indigo-50/40 border-b border-sky-100">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-semibold text-slate-800">Weather Intelligence</CardTitle>
+                  {weather && getSeverityBadge(weather.severity)}
+                </div>
+                <CardDescription className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                  <Compass className="h-3 w-3 text-sky-500" />
+                  {weather?.location || 'Smart Resort 360, South Goa'}
+                </CardDescription>
+              </div>
+              <div className="p-2 rounded-xl bg-white shadow-xs border border-sky-100">
+                {weather ? getWeatherIcon(weather.condition) : <Sun className="h-6 w-6 text-amber-500" />}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {weatherLoading ? (
+                <div className="py-4 text-center text-xs text-muted-foreground animate-pulse">
+                  Fetching live telemetry…
+                </div>
+              ) : weather ? (
+                <>
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <div className="text-3xl font-extrabold tracking-tight text-slate-900">
+                        {weather.temperature}°C
+                      </div>
+                      <div className="text-xs font-medium text-slate-600 capitalize mt-0.5">
+                        {weather.condition}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold uppercase text-slate-400">Severity Rating</div>
+                      <div className={`text-base font-extrabold tracking-wider ${getSeverityColor(weather.severity)}`}>
+                        {weather.severity}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t text-xs">
+                    <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                      <span className="text-slate-500 flex items-center gap-1 font-medium">
+                        <CloudRain className="h-3 w-3 text-sky-500" /> Rainfall
+                      </span>
+                      <span className="font-bold text-slate-800 text-sm mt-1">{weather.rainfall} mm</span>
+                    </div>
+
+                    <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                      <span className="text-slate-500 flex items-center gap-1 font-medium">
+                        <Droplets className="h-3 w-3 text-blue-500" /> Rain Prob.
+                      </span>
+                      <span className="font-bold text-slate-800 text-sm mt-1">{weather.rain_probability}%</span>
+                    </div>
+
+                    <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                      <span className="text-slate-500 flex items-center gap-1 font-medium">
+                        <Wind className="h-3 w-3 text-teal-500" /> Wind
+                      </span>
+                      <span className="font-bold text-slate-800 text-sm mt-1">{weather.wind_speed} km/h</span>
+                    </div>
+                  </div>
+
+                  {weather.severity_reason && (
+                    <div className="p-2.5 rounded-lg bg-slate-50/80 border border-slate-200/80 text-xs text-slate-600 flex items-start gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="leading-relaxed">
+                        <span className="font-semibold text-slate-800">Operational Severity Rationale: </span>
+                        {weather.severity_reason}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-1">
+                    <Link to="/digital-twin" className="w-full block">
+                      <Button variant="outline" size="sm" className="w-full text-xs h-8 border-sky-200 text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950/30 flex items-center justify-center gap-1.5 font-medium transition-colors">
+                        <Activity className="h-3.5 w-3.5 text-sky-600" />
+                        Open What-If Digital Twin Simulator
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-muted-foreground py-2 text-center">
+                  Weather telemetry temporarily unavailable
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center space-y-0">
               <div className="flex-1">

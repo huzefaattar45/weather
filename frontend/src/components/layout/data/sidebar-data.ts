@@ -10,7 +10,8 @@ import {
   History,
   Settings,
   Hotel,
-  Gauge
+  Gauge,
+  CloudRain
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -100,6 +101,11 @@ export const sidebarData: SidebarData = {
           title: 'AI Insights',
           url: '/insights',
           icon: BrainCircuit,
+        },
+        {
+          title: 'Weather Digital Twin',
+          url: '/digital-twin',
+          icon: CloudRain,
         },
         {
           title: 'Audit Trail',

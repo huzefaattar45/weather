@@ -83,9 +83,19 @@ app.include_router(reports.router)
 app.include_router(ml.router)
 app.include_router(auth_routes.router)
 
-from backend.routes import guest_portal, bookings
+from backend.routes import guest_portal, bookings, weather, digital_twin
 app.include_router(guest_portal.router)
 app.include_router(bookings.router)
+app.include_router(weather.router)
+app.include_router(digital_twin.router)
+
+from backend.schemas.public_signal import PublicSignalsResponse
+from backend.services.public_signals_service import get_public_signals
+from typing import Optional
+
+@app.get("/api/public-signals", response_model=PublicSignalsResponse, tags=["public-signals"])
+def get_public_signals_endpoint(rainfall: Optional[float] = None, temperature: Optional[float] = None):
+    return get_public_signals(rainfall_override=rainfall, temperature_override=temperature)
 
 # ── Static file serving for completion proof images ──────────────────────────
 os.makedirs("uploads/proofs", exist_ok=True)

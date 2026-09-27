@@ -541,6 +541,64 @@ export const api = {
     
   markNotificationRead: (guestId: number, notificationId: number) =>
     fetchAPI(`/api/guest/${guestId}/notifications/${notificationId}/read`, { method: 'POST' }),
+
+  getCurrentWeather: (): Promise<CurrentWeatherResponse> =>
+    fetchAPI('/api/weather/current'),
+
+  getWeatherForecast: (): Promise<WeatherForecastResponse> =>
+    fetchAPI('/api/weather/forecast'),
+
+  getWeatherSeverity: (params?: { rainfall?: number; temperature?: number; wind?: number; condition?: string }): Promise<WeatherSeverityResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.rainfall !== undefined) searchParams.append('rainfall', params.rainfall.toString());
+    if (params?.temperature !== undefined) searchParams.append('temperature', params.temperature.toString());
+    if (params?.wind !== undefined) searchParams.append('wind', params.wind.toString());
+    if (params?.condition !== undefined) searchParams.append('condition', params.condition);
+    const query = searchParams.toString();
+    return fetchAPI(`/api/weather/severity${query ? `?${query}` : ''}`);
+  },
+
+  simulateDigitalTwin: (payload: DigitalTwinSimulationRequest): Promise<DigitalTwinSimulationResponse> => {
+    const rawRain = typeof payload.rainfall === 'number' ? payload.rainfall : parseFloat(payload.rainfall as any);
+    const rawTemp = typeof payload.temperature === 'number' ? payload.temperature : parseFloat(payload.temperature as any);
+    const rawDur = typeof payload.duration_hours === 'number' ? payload.duration_hours : parseFloat(payload.duration_hours as any);
+    const rawWind = typeof payload.wind === 'number' ? payload.wind : parseFloat(payload.wind as any);
+    const rawHum = typeof payload.humidity === 'number' ? payload.humidity : parseFloat(payload.humidity as any);
+
+    const sanitized = {
+      rainfall: !isNaN(rawRain) ? Math.max(0, rawRain) : 0.0,
+      temperature: !isNaN(rawTemp) ? rawTemp : 25.0,
+      duration_hours: !isNaN(rawDur) ? Math.max(0.1, rawDur) : 3.0,
+      duration: !isNaN(rawDur) ? Math.max(0.1, rawDur) : 3.0,
+      wind: !isNaN(rawWind) ? Math.max(0, rawWind) : 12.0,
+      wind_speed: !isNaN(rawWind) ? Math.max(0, rawWind) : 12.0,
+      humidity: !isNaN(rawHum) ? Math.min(100, Math.max(0, rawHum)) : 68.0,
+      ...(payload.current_occupancy !== undefined ? { current_occupancy: payload.current_occupancy } : {}),
+      ...(payload.day_of_week !== undefined ? { day_of_week: payload.day_of_week } : {}),
+    };
+    return fetchAPI('/api/digital-twin/simulate', {
+      method: 'POST',
+      body: JSON.stringify(sanitized),
+    });
+  },
+
+  getPublicSignals: (params?: { rainfall?: number; temperature?: number }): Promise<PublicSignalsResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.rainfall !== undefined) searchParams.append('rainfall', params.rainfall.toString());
+    if (params?.temperature !== undefined) searchParams.append('temperature', params.temperature.toString());
+    const query = searchParams.toString();
+    return fetchAPI(`/api/digital-twin/public-signals${query ? `?${query}` : ''}`);
+  },
+
+  getGuestWeatherExperience: (params?: { rainfall?: number; temperature?: number; condition?: string; guest_id?: number }): Promise<GuestExperienceWeatherResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.rainfall !== undefined) searchParams.append('rainfall', params.rainfall.toString());
+    if (params?.temperature !== undefined) searchParams.append('temperature', params.temperature.toString());
+    if (params?.condition !== undefined) searchParams.append('condition', params.condition);
+    if (params?.guest_id !== undefined) searchParams.append('guest_id', params.guest_id.toString());
+    const query = searchParams.toString();
+    return fetchAPI(`/api/weather/guest-experience${query ? `?${query}` : ''}`);
+  },
 };
 
 export interface SystemicIssue {
@@ -555,3 +613,216 @@ export interface SystemicIssue {
 export interface SystemicIssueResponse {
   issues: SystemicIssue[];
 }
+
+export interface CurrentWeatherResponse {
+  temperature: number;
+  humidity: number;
+  rainfall: number;
+  rain_probability: number;
+  wind_speed: number;
+  condition: string;
+  timestamp: string;
+  location: string;
+  severity: 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' | string;
+  severity_reason: string;
+  is_live: boolean;
+}
+
+export interface DailyForecastItem {
+  date: string;
+  temperature_max: number;
+  temperature_min: number;
+  rainfall: number;
+  rain_probability: number;
+  wind_speed: number;
+  condition: string;
+  severity: 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' | string;
+  severity_reason: string;
+}
+
+export interface WeatherForecastResponse {
+  location: string;
+  timestamp: string;
+  current: CurrentWeatherResponse;
+  forecast: DailyForecastItem[];
+}
+
+export interface WeatherSeverityResponse {
+  severity: 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' | string;
+  severity_reason: string;
+  rainfall: number;
+  temperature: number;
+  wind: number;
+  condition: string;
+}
+
+export interface DigitalTwinSimulationRequest {
+  rainfall: number;
+  temperature: number;
+  duration_hours: number;
+  humidity?: number;
+  wind?: number;
+  day_of_week?: number;
+  current_occupancy?: number;
+}
+
+export interface AffectedActivity {
+  name: string;
+  venue: string;
+  status: 'Suspended' | 'Relocated' | 'Operational' | string;
+  reason: string;
+  impact_level: 'High' | 'Medium' | 'Low' | string;
+}
+
+export interface IndoorActivityAlternative {
+  name: string;
+  venue: string;
+  suitable_for: string;
+  status: string;
+  highlights: string;
+}
+
+export interface ActivitiesIntegration {
+  affected_outdoor_activities: AffectedActivity[];
+  suggested_indoor_alternatives: IndoorActivityAlternative[];
+  summary: string;
+}
+
+export interface DiningIntegration {
+  baseline_demand_pct: number;
+  simulated_demand_pct: number;
+  predicted_increase_pct: number;
+  in_room_dining_surge: boolean;
+  estimated_covers: number;
+  impacted_venues: string[];
+  operational_recommendation: string;
+}
+
+export interface StaffDepartmentBreakdown {
+  department: string;
+  current_available: number;
+  additional_required: number;
+  primary_task: string;
+}
+
+export interface StaffingIntegration {
+  total_current_available: number;
+  total_additional_required: number;
+  departments: StaffDepartmentBreakdown[];
+  recommendation: string;
+}
+
+export interface IndoorExperience {
+  title: string;
+  category: string;
+  location: string;
+  availability_status: string;
+  duration: string;
+  description: string;
+}
+
+export interface GuestExperienceIntegration {
+  experiences: IndoorExperience[];
+  curation_rationale: string;
+}
+
+export interface WeatherNotificationPreview {
+  title: string;
+  target_audience: string;
+  channel: string;
+  preview_message: string;
+  urgency: string;
+  dispatch_advice: string;
+  is_simulation_only: boolean;
+}
+
+export interface GeospatialLocationImpact {
+  id: string;
+  name: string;
+  category: 'resort' | 'pool' | 'restaurant' | 'spa' | 'outdoor activity area' | string;
+  latitude: number;
+  longitude: number;
+  impact_state: 'LOW' | 'MODERATE' | 'HIGH';
+  status_label: string;
+  weather_condition: string;
+  operational_action: string;
+  demand_or_capacity_pct: number;
+}
+
+export interface DigitalTwinIntegrations {
+  is_heavy_weather: boolean;
+  weather_severity: string;
+  activities: ActivitiesIntegration;
+  dining: DiningIntegration;
+  staffing: StaffingIntegration;
+  guest_experience: GuestExperienceIntegration;
+  notification: WeatherNotificationPreview;
+  geospatial_locations?: GeospatialLocationImpact[];
+}
+
+export interface PublicSignal {
+  id: string;
+  source: string;
+  summary: string;
+  timestamp: string;
+  relevance: 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  impact_type: 'weather' | 'travel_disruption' | 'flooding' | 'road_conditions' | 'traveler_reports' | string;
+  location_reference?: string;
+  verified: boolean;
+}
+
+export interface PublicSignalsResponse {
+  signals: PublicSignal[];
+  total_signals: number;
+  primary_source: string;
+  last_updated: string;
+  context_advice: string;
+}
+
+export interface DigitalTwinSimulationResponse {
+  outdoor_activity_demand: number;
+  dining_demand: number;
+  spa_demand: number;
+  guest_request_volume: number;
+  additional_staff_requirement: number;
+  impact_severity: 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' | string;
+  occupancy: number;
+  explanation: {
+    occupancy?: string;
+    outdoor_activity_demand?: string;
+    dining_demand?: string;
+    spa_demand?: string;
+    guest_request_volume?: string;
+    additional_staff_requirement?: string;
+    impact_severity?: string;
+    [key: string]: string | undefined;
+  };
+  simulation_metadata?: Record<string, any>;
+  integrations?: DigitalTwinIntegrations;
+  public_signals?: PublicSignalsResponse;
+}
+
+export interface IndoorExperienceItem {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  availability_status: string;
+  duration: string;
+  description: string;
+  booking_category: string;
+}
+
+export interface GuestExperienceWeatherResponse {
+  high_outdoor_impact: boolean;
+  weather_condition: string;
+  temperature: number;
+  rainfall: number;
+  severity: string;
+  alert_title: string;
+  alert_message: string;
+  indoor_experiences: IndoorExperienceItem[];
+  notification_synced: boolean;
+}
+
+

@@ -9,12 +9,14 @@ export const ROLE_ALLOWED_ROUTES: Record<Role, string[]> = {
     '/recommendations',
     '/booking-occupancy',
     '/complaints',
+    '/digital-twin',
   ],
   Staff: [
     '/dashboard',
     '/resort-360',
     '/tasks',
     '/staff',
+    '/digital-twin',
   ],
   'Team Head': [
     '/dashboard',
@@ -26,6 +28,7 @@ export const ROLE_ALLOWED_ROUTES: Record<Role, string[]> = {
     '/recommendations',
     '/booking-occupancy',
     '/cancellation-risk',
+    '/digital-twin',
   ],
   Manager: [
     '/dashboard',
@@ -40,6 +43,7 @@ export const ROLE_ALLOWED_ROUTES: Record<Role, string[]> = {
     '/cancellation-risk',
     '/insights',
     '/audit',
+    '/digital-twin',
     '/settings',
   ],
 }

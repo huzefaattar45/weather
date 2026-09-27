@@ -103,8 +103,17 @@ def create_guest_request(
 def get_guest_notifications(guest_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_guest)):
     if current_user.id != guest_id:
         raise HTTPException(status_code=403, detail="Forbidden: You can only access your own notifications")
+    
+    # Check if high weather impact warrants a weather alert notification
+    try:
+        from backend.services.weather_service import get_guest_weather_experience
+        get_guest_weather_experience(guest_id=guest_id, db=db)
+    except Exception:
+        pass
+
     notifications = db.query(Notification).filter(Notification.guest_id == guest_id).order_by(Notification.created_at.desc()).all()
     return notifications
+
 
 @router.post("/{guest_id}/notifications/{notification_id}/read")
 def mark_notification_read(guest_id: int, notification_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_guest)):
